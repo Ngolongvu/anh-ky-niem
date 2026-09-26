@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Solar System</title>
+
+    <!-- CẤU HÌNH IMPORTMAP CHO THREE.JS -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+    </script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #05070c;
+            font-family: 'Consolas', 'Courier New', monospace, sans-serif;
+        }
+
+        /* MÀN HÌNH LOADING */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #05070c;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+
+        #loading-screen.loaded {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .solar-icon {
+            position: relative;
+            width: 70px;
+            height: 70px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .sun-center {
+            width: 18px;
+            height: 18px;
+            background-color: #ff1744;
+            border-radius: 50%;
+            box-shadow: 0 0 12px #ff1744, 0 0 25px #ff2a5f;
+        }
+
+        .orbit-ring {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            animation: spin 3s linear infinite;
+        }
+
+        .planet-dot {
+            position: absolute;
+            top: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 8px;
+            height: 8px;
+            background-color: #64b5f6;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #64b5f6;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-title {
+            color: #dce7f5;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 7px;
+            margin-bottom: 30px;
+        }
+
+        .loading-bar-bg {
+            width: 260px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        #loading-bar-fill {
+            width: 0%;
+            height: 100%;
+            background: #ff1744;
+            box-shadow: 0 0 8px #ff1744;
+            transition: width 0.2s ease-out;
+        }
+
+        #loading-percent {
+            color: #7a8b9e;
+            font-size: 11px;
+            letter-spacing: 2px;
+            margin-top: 18px;
+            font-weight: bold;
+        }
+
+        /* GIAO DIỆN NÚT VÀ THANH ĐIỀU KHIỂN */
+        .ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .upload-btn-wrapper {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: auto;
+            display: flex;
+            gap: 10px;
+        }
+
+        .upload-btn {
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            backdrop-filter: blur(6px);
+            transition: all 0.3s;
+        }
+
+        .upload-btn:hover {
+            background: rgba(30, 41, 59, 0.9);
+            border-color: #ff1744;
+        }
+
+        .controls-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 12px 18px;
+            border-radius: 8px;
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #fff;
+            font-size: 12px;
+            pointer-events: auto;
+        }
+
+        .zoom-btns {
+            display: flex;
+            gap: 5px;
+            margin-left: 10px;
+        }
+
+        .zoom-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        /* POPUP PHÓNG TO ẢNH & KHUNG ĐIỀU KHIỂN XÓA */
+        #image-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.88);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content-wrapper {
+            position: relative;
+            max-width: 85%;
+            max-height: 80%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #modal-img {
+            max-width: 100%;
+            max-height: 75vh;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(255, 23, 68, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            object-fit: contain;
+        }
+
+        .modal-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .delete-btn {
+            background: #d32f2f;
+            border: none;
+            color: white;
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .delete-btn:hover {
+            background: #b71c1c;
+        }
+
+        #close-modal {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: #fff;
+            font-size: 36px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen">
+        <div class="solar-icon">
+            <div class="sun-center"></div>
+            <div class="orbit-ring"><div class="planet-dot"></div></div>
+        </div>
+        <div class="loading-title">HEART SYSTEM</div>
+        <div class="loading-bar-bg"><div id="loading-bar-fill"></div></div>
+        <div id="loading-percent">0%</div>
+    </div>
+
+    <!-- UI BẢNG ĐIỀU KHIỂN -->
+    <div class="ui-container">
+        <div class="upload-btn-wrapper">
+            <label for="image-upload" class="upload-btn">📷 Tải ảnh kỷ niệm</label>
+            <input type="file" id="image-upload" multiple accept="image/*" style="display: none;" />
+            
+            <!-- Nút Bật / Tắt Nhạc -->
+            <button id="music-toggle" class="upload-btn">🎵 Bật nhạc</button>
+        </div>
+
+        <div class="controls-panel">
+            <span>Tốc độ:</span>
+            <input type="range" id="slider" min="0" max="100" value="33" />
+            <span id="speed-value">1.00x</span>
+            <div class="zoom-btns">
+                <button id="zoom-in" class="zoom-btn">+</button>
+                <button id="zoom-out" class="zoom-btn">-</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PHÓNG TO & XÓA ẢNH -->
+    <div id="image-modal">
+        <span id="close-modal">&times;</span>
+        <div class="modal-content-wrapper">
+            <img id="modal-img" src="" alt="Enlarged Photo" />
+            <div class="modal-actions">
+                <button id="delete-photo-btn" class="delete-btn">🗑️ Xóa ảnh này</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- THẺ NHẠC NỀN -->
+    <audio id="bg-music" src="./public/audio/music.mp3" loop></audio>
+
+    <script type="module" src="./src/main.js"></script>
+
+    <script>
+        setTimeout(() => {
+            const loader = document.getElementById("loading-screen");
+            if (loader && !loader.classList.contains("loaded")) {
+                loader.classList.add("loaded");
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
